@@ -1,0 +1,2778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <title>QC Inspector — Construction Field Inspection App</title>
+  <!-- Google Fonts: Inter for high outdoor/field readability -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+    /* A4 Paper Print Settings for PDF Export */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 12mm;
+      }
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-200 selection:text-slate-900">
+
+  <!-- ===================================================================== -->
+  <!-- MAIN INTERACTIVE APPLICATION SHELL (HIDDEN DURING A4 PDF PRINTING)    -->
+  <!-- ===================================================================== -->
+  <div id="app-shell" class="min-h-screen flex flex-col pb-24 md:pb-10 print:hidden">
+
+    <!-- STICKY TOP HEADER: Brand, Active Project Selector & Profile Settings -->
+    <header class="sticky top-0 z-30 bg-slate-900 text-white shadow-md border-b border-slate-800">
+      <div class="max-w-6xl mx-auto px-3 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        
+        <!-- Top Row: Brand & Quick Profile Action -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h1 class="text-base sm:text-lg font-extrabold tracking-tight leading-none text-white">QC Inspector</h1>
+                <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">Field PWA</span>
+              </div>
+              <button type="button" id="btn-header-inspector-trigger" class="text-[11px] text-slate-400 hover:text-amber-300 mt-0.5 text-left transition">
+                Inspector: <span id="header-inspector-name" class="text-amber-300 font-semibold underline decoration-dotted">Not set (Tap to enter)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Desktop/Tablet Navigation + Profile & Settings Button -->
+          <div class="flex items-center gap-2">
+            <nav class="hidden md:flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700 mr-1">
+              <button type="button" data-nav="list" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-amber-400 text-slate-950">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                Defect List
+              </button>
+              <button type="button" data-nav="create" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                New Inspection
+              </button>
+              <button type="button" data-nav="reports" class="nav-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                Reports & Data
+              </button>
+            </nav>
+
+            <button id="btn-open-settings" type="button" title="Profile & Settings" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 flex items-center gap-1.5 text-xs font-bold transition">
+              <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              <span>Profile & Settings</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Project Selector & Manage Projects Button -->
+        <div class="flex items-center gap-2 sm:min-w-[360px] md:min-w-[420px]">
+          <div class="relative flex-1">
+            <label for="project-selector" class="sr-only">Select Active Project</label>
+            <select id="project-selector" class="w-full appearance-none bg-slate-800 text-white text-xs sm:text-sm font-semibold pl-3 pr-9 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 truncate">
+              <!-- Populated via JavaScript -->
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-amber-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+            </div>
+          </div>
+          <button id="btn-manage-projects" type="button" title="Manage Project List" class="px-3 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shrink-0 shadow-sm transition">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
+            <span>Manage Projects</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-4 space-y-4">
+
+      <!-- ================================================================= -->
+      <!-- VIEW 1: KPI DASHBOARD & INTERACTIVE DEFECT LIST                   -->
+      <!-- ================================================================= -->
+      <section id="view-list" class="space-y-4">
+
+        <!-- Sample Data Banner (Shown while sample records exist) -->
+        <div id="sample-data-banner" class="hidden bg-amber-50 border border-amber-300 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div class="flex items-start gap-2.5">
+            <span class="p-1.5 rounded-lg bg-amber-200/80 text-amber-900 shrink-0 mt-0.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+            </span>
+            <div>
+              <p class="text-xs sm:text-sm font-bold text-amber-950">Demo Mode: 2 Sample Defect Records Loaded</p>
+              <p class="text-xs text-amber-800 mt-0.5">Tap any defect card to test the progress update & Before–After photo workflow, or clear the sample data when ready for live field inspection.</p>
+            </div>
+          </div>
+          <button id="btn-clear-samples" type="button" class="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs shrink-0 shadow-sm transition">
+            Clear Sample Data
+          </button>
+        </div>
+
+        <!-- KPI Summary Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3.5">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Project Progress Summary</span>
+              <h2 id="kpi-project-title" class="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">DC Kawan Lama Sidoarjo Extension</h2>
+              <!-- SAP & ME Category Summary -->
+              <div class="flex items-center gap-2 mt-1.5">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  SAP: <strong id="kpi-cat-sap">0</strong>
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                  ME: <strong id="kpi-cat-me">0</strong>
+                </span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span id="kpi-percent-text" class="text-lg sm:text-xl font-extrabold text-emerald-600">0%</span>
+              <span class="block text-[11px] font-medium text-slate-500">Closed / Completed</span>
+            </div>
+          </div>
+
+          <!-- Completion Progress Bar -->
+          <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
+            <div id="kpi-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+
+          <!-- 5 KPI Counters -->
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-3 pt-1">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-3 text-center">
+              <span id="kpi-total" class="block text-base sm:text-xl font-extrabold text-slate-900">0</span>
+              <span class="block text-[10px] sm:text-xs font-semibold text-slate-500 mt-0.5">Total</span>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-xl p-2 sm:p-3 text-center">
+              <span id="kpi-open" class="block text-base sm:text-xl font-extrabold text-red-700">0</span>
+              <span class="block text-[10px] sm:text-xs font-semibold text-red-700 mt-0.5">Open</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-3 text-center">
+              <span id="kpi-progress" class="block text-base sm:text-xl font-extrabold text-amber-700">0</span>
+              <span class="block text-[10px] sm:text-xs font-semibold text-amber-700 mt-0.5 truncate">Progress</span>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-2 sm:p-3 text-center">
+              <span id="kpi-recheck" class="block text-base sm:text-xl font-extrabold text-blue-700">0</span>
+              <span class="block text-[10px] sm:text-xs font-semibold text-blue-700 mt-0.5">Re-check</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2 sm:p-3 text-center">
+              <span id="kpi-closed" class="block text-base sm:text-xl font-extrabold text-emerald-700">0</span>
+              <span class="block text-[10px] sm:text-xs font-semibold text-emerald-700 mt-0.5">Closed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm space-y-3">
+          <div class="flex flex-col md:flex-row gap-2.5">
+            <!-- Text Search -->
+            <div class="relative flex-1">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+              </div>
+              <input id="filter-search" type="search" placeholder="Search ID (DEF-...), grid/axis location, or description..." class="w-full pl-10 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            </div>
+
+            <!-- Category & Urgency Dropdowns -->
+            <div class="grid grid-cols-2 md:flex gap-2">
+              <select id="filter-category" class="px-3 py-2.5 text-xs sm:text-sm font-medium bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+                <option value="ALL">All Categories</option>
+                <option value="SAP">SAP</option>
+                <option value="ME">ME</option>
+              </select>
+              <select id="filter-urgency" class="px-3 py-2.5 text-xs sm:text-sm font-medium bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+                <option value="ALL">All Urgencies</option>
+                <option value="Minor">Minor</option>
+                <option value="Major">Major</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Status Quick Filter Pills -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+            <button type="button" data-status-filter="ALL" class="status-pill-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-slate-900 text-white border-slate-900">
+              All (<span id="pill-count-all">0</span>)
+            </button>
+            <button type="button" data-status-filter="Open" class="status-pill-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-red-50">
+              Open (<span id="pill-count-open">0</span>)
+            </button>
+            <button type="button" data-status-filter="In Progress" class="status-pill-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-amber-50">
+              In Progress (<span id="pill-count-progress">0</span>)
+            </button>
+            <button type="button" data-status-filter="Re-check" class="status-pill-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-blue-50">
+              Re-check (<span id="pill-count-recheck">0</span>)
+            </button>
+            <button type="button" data-status-filter="Closed" class="status-pill-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 bg-white text-slate-700 border-slate-200 hover:bg-emerald-50">
+              Closed (<span id="pill-count-closed">0</span>)
+            </button>
+          </div>
+        </div>
+
+        <!-- Defect Cards Grid -->
+        <div id="defect-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- Rendered via JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="defect-empty-state" class="hidden bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">No Defect Findings Found</h3>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">No defects match the active filters, or this project has no recorded inspection items yet.</p>
+          </div>
+          <button type="button" onclick="switchView('create')" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Record New Inspection Finding
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 2: QUICK FIELD INSPECTION FORM (CREATE DEFECT)               -->
+      <!-- ================================================================= -->
+      <section id="view-create" class="hidden max-w-2xl mx-auto">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-slate-900 text-white px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Quick Field Inspection</span>
+              <h2 class="text-base sm:text-lg font-extrabold">Log New Defect Finding</h2>
+            </div>
+            <button type="button" onclick="switchView('list')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition">
+              Cancel
+            </button>
+          </div>
+
+          <form id="form-create-defect" class="p-4 sm:p-6 space-y-4">
+            <!-- Active Project Info -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+              <span class="text-xs text-slate-500 font-medium shrink-0">Active Project:</span>
+              <span id="create-active-project-label" class="text-xs sm:text-sm font-bold text-slate-900 text-right truncate">DC Kawan Lama Sidoarjo Extension</span>
+            </div>
+
+            <!-- Row 1: Auto Defect Code & Inspection Date -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label for="input-defect-code" class="block text-xs font-bold text-slate-700 mb-1">Defect ID Code (Auto)</label>
+                <input id="input-defect-code" type="text" required class="w-full px-3.5 py-2.5 text-sm font-mono font-bold bg-slate-100 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              </div>
+              <div>
+                <label for="input-tanggal-temuan" class="block text-xs font-bold text-slate-700 mb-1">Inspection Date *</label>
+                <input id="input-tanggal-temuan" type="date" required class="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              </div>
+            </div>
+
+            <!-- Row 2: Location / Grid / Axis & Target Completion Date -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label for="input-lokasi-grid" class="block text-xs font-bold text-slate-700 mb-1">Location / Grid / Axis / Elevation *</label>
+                <input id="input-lokasi-grid" type="text" required placeholder="e.g., Grid B-4 / Axis 08, Zone 2" class="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              </div>
+              <div>
+                <label for="input-target-selesai" class="block text-xs font-bold text-slate-700 mb-1">Target Completion Date</label>
+                <input id="input-target-selesai" type="date" class="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              </div>
+            </div>
+
+            <!-- Row 3: Work Category (SAP / ME) & Urgency Level -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Work Category *</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="cursor-pointer">
+                    <input type="radio" name="kategori" value="SAP" checked class="peer sr-only" />
+                    <div class="text-center py-2.5 px-3 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition">
+                      SAP
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="kategori" value="ME" class="peer sr-only" />
+                    <div class="text-center py-2.5 px-3 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-cyan-600 peer-checked:text-white peer-checked:border-cyan-600 transition">
+                      ME
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Urgency Level *</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <label class="cursor-pointer">
+                    <input type="radio" name="urgensi" value="Minor" class="peer sr-only" />
+                    <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition">
+                      Minor
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="urgensi" value="Major" checked class="peer sr-only" />
+                    <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 peer-checked:bg-orange-600 peer-checked:text-white peer-checked:border-orange-600 transition">
+                      Major
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="urgensi" value="Critical" class="peer sr-only" />
+                    <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600 transition">
+                      Critical
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 4: Finding Description -->
+            <div>
+              <label for="input-deskripsi" class="block text-xs font-bold text-slate-700 mb-1">Finding / Non-Conformance Description *</label>
+              <textarea id="input-deskripsi" rows="3" required placeholder="Describe non-conformance details against shop drawings or technical specifications..." class="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+            </div>
+
+            <!-- Row 5: Before Photo Upload + Auto-Compression & Watermark -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Before Photo Documentation</label>
+                <span class="text-[11px] font-medium text-slate-500">Auto-Compress 1024px</span>
+              </div>
+
+              <!-- Date & Location Watermark Toggle -->
+              <label class="flex items-center gap-2.5 cursor-pointer bg-white p-2.5 rounded-xl border border-slate-200">
+                <input id="input-watermark-before" type="checkbox" checked class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900" />
+                <span class="text-xs font-semibold text-slate-800">Stamp Date & Location Watermark onto Photo</span>
+              </label>
+
+              <!-- Direct Camera & Gallery Buttons -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="document.getElementById('file-before-camera').click()" class="py-3 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                  Take Photo (Camera)
+                </button>
+                <button type="button" onclick="document.getElementById('file-before-gallery').click()" class="py-3 px-3 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-slate-800 border border-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+                  <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                  Choose from Gallery
+                </button>
+              </div>
+              <input id="file-before-camera" type="file" accept="image/*" capture="environment" class="hidden" />
+              <input id="file-before-gallery" type="file" accept="image/*" class="hidden" />
+
+              <!-- Before Photo Preview -->
+              <div id="create-before-preview-box" class="hidden relative rounded-xl overflow-hidden border border-slate-300 bg-slate-900">
+                <img id="create-before-preview-img" alt="Before Photo Preview" class="w-full max-h-64 object-contain mx-auto" />
+                <div class="bg-slate-900/90 text-white px-3 py-2 flex items-center justify-between text-[11px]">
+                  <span id="create-before-size-info" class="font-mono text-emerald-400">Ready to save</span>
+                  <button type="button" id="btn-remove-create-photo" class="text-red-400 hover:text-red-300 font-bold">Remove Photo</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="btn-submit-defect" class="w-full py-3.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-[0.99] text-slate-950 font-extrabold text-sm shadow-md flex items-center justify-center gap-2 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+              Save Defect Finding
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 3: REPORTS EXPORT & DEVICE DATA SYNC                         -->
+      <!-- ================================================================= -->
+      <section id="view-reports" class="hidden max-w-3xl mx-auto space-y-4">
+        
+        <!-- Card 1: Official Inspection Reports -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-4">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Reporting & Handover Minutes</span>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Export QC Inspection Report</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Selected project: <strong id="report-project-name" class="text-slate-800">-</strong></p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <!-- Export PDF A4 -->
+            <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 flex flex-col justify-between space-y-3">
+              <div class="space-y-1.5">
+                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                </div>
+                <h3 class="text-sm font-extrabold text-slate-900">Official PDF Report (A4 Format)</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">Print-ready / Save as PDF layout complete with project header, KPI summary, Before–After photos, and Inspector & Approver signature blocks.</p>
+              </div>
+              <div class="flex gap-2">
+                <button id="btn-export-pdf" type="button" class="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs transition">
+                  Print / Save PDF
+                </button>
+                <button id="btn-preview-pdf" type="button" class="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-bold text-xs transition">
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            <!-- Export CSV / Excel -->
+            <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 flex flex-col justify-between space-y-3">
+              <div class="space-y-1.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125" /></svg>
+                </div>
+                <h3 class="text-sm font-extrabold text-slate-900">Excel Table Summary (.CSV)</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">Download the full defect register for the active project as a structured CSV file compatible with Microsoft Excel and Google Sheets.</p>
+              </div>
+              <button id="btn-export-csv" type="button" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs transition">
+                Download CSV Summary
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Cross-Device JSON Backup & Restore -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-4">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600">Offline Sync & Backup</span>
+              <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Backup & Restore Data (.JSON)</h2>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Transfer your entire project database, defect list, and Before–After photos between devices (Phone to Tablet/Laptop).</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button id="btn-backup-json" type="button" class="py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+              Export Backup File (.JSON)
+            </button>
+
+            <button type="button" onclick="document.getElementById('file-restore-json').click()" class="py-3 px-4 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-900 border-2 border-slate-300 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+              Import / Restore (.JSON)
+            </button>
+            <input id="file-restore-json" type="file" accept=".json,application/json" class="hidden" />
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 flex items-center justify-between">
+            <span>Browser Storage Status (IndexedDB):</span>
+            <span id="db-storage-summary" class="font-bold text-slate-900">Active & Synced</span>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- BOTTOM NAVIGATION BAR (MOBILE < 768px)                              -->
+    <!-- =================================================================== -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(15,23,42,0.06)] px-2 py-1.5">
+      <div class="grid grid-cols-3 gap-1 max-w-md mx-auto items-center">
+        <button type="button" data-nav="list" class="mobile-nav-btn py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-900 font-bold transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+          <span class="text-[11px]">Defect List</span>
+        </button>
+
+        <button type="button" data-nav="create" class="mobile-nav-btn py-2 px-2 rounded-2xl bg-amber-400 text-slate-950 font-extrabold flex flex-col items-center justify-center gap-0.5 shadow-sm active:scale-95 transition">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          <span class="text-[11px]">New Inspection</span>
+        </button>
+
+        <button type="button" data-nav="reports" class="mobile-nav-btn py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-500 font-semibold transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+          <span class="text-[11px]">Reports & Data</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: DEFECT DETAIL, PROGRESS UPDATE & BEFORE-AFTER COMPARISON     -->
+  <!-- ===================================================================== -->
+  <div id="modal-defect-detail" class="hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 print:hidden">
+    <div class="bg-white rounded-2xl max-w-3xl mx-auto my-3 shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-900 text-white px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="detail-code" class="font-mono text-sm sm:text-base font-extrabold text-amber-400">DEF-202611-001</span>
+          <span id="detail-category-badge" class="px-2 py-0.5 rounded-md text-[11px] font-extrabold border bg-indigo-100 text-indigo-800 border-indigo-300">SAP</span>
+          <span id="detail-urgency-badge" class="px-2 py-0.5 rounded-md text-[11px] font-bold border bg-orange-100 text-orange-800 border-orange-300">Major</span>
+          <span id="detail-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold border bg-red-100 text-red-800 border-red-300">Open</span>
+        </div>
+        <button id="btn-close-detail" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 sm:p-6 space-y-5">
+        
+        <!-- Technical Metadata -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
+          <div>
+            <span class="block text-slate-400 font-semibold">Location / Grid / Axis</span>
+            <strong id="detail-lokasi" class="text-slate-900 text-xs sm:text-sm font-bold mt-0.5 block">-</strong>
+          </div>
+          <div>
+            <span class="block text-slate-400 font-semibold">Inspection Date & Target</span>
+            <strong id="detail-dates" class="text-slate-900 font-bold mt-0.5 block">-</strong>
+          </div>
+          <div>
+            <span class="block text-slate-400 font-semibold">Closed Verification Date</span>
+            <strong id="detail-close-date" class="text-emerald-700 font-bold mt-0.5 block">Not Closed</strong>
+          </div>
+        </div>
+
+        <!-- Finding Description -->
+        <div>
+          <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1">Finding Description</span>
+          <p id="detail-deskripsi" class="text-xs sm:text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl p-3.5 leading-relaxed">-</p>
+        </div>
+
+        <!-- Side-by-Side Before & After Photo Comparison -->
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Before – After Photo Comparison (Tap photo to zoom)</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <!-- Photo Before -->
+            <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 flex flex-col">
+              <div class="bg-red-700 text-white px-3 py-1.5 text-[11px] font-extrabold tracking-wider flex items-center justify-between">
+                <span>BEFORE PHOTO (INITIAL FINDING)</span>
+                <span class="text-red-200 font-medium">Tap to Zoom</span>
+              </div>
+              <div id="detail-before-wrapper" class="h-52 flex items-center justify-center cursor-zoom-in relative overflow-hidden">
+                <img id="detail-before-img" alt="Before Photo" class="w-full h-full object-contain" />
+                <div id="detail-before-empty" class="hidden text-xs text-slate-400 p-4 text-center">No Before photo attached</div>
+              </div>
+            </div>
+
+            <!-- Photo After -->
+            <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 flex flex-col">
+              <div class="bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-extrabold tracking-wider flex items-center justify-between">
+                <span>AFTER PHOTO (RECTIFICATION)</span>
+                <span id="detail-after-zoom-hint" class="hidden text-emerald-200 font-medium">Tap to Zoom</span>
+              </div>
+              <div class="h-52 flex items-center justify-center relative overflow-hidden">
+                <img id="detail-after-img" alt="After Photo" class="hidden w-full h-full object-contain cursor-zoom-in" />
+                <div id="detail-after-empty" class="text-xs text-slate-400 p-4 text-center space-y-1">
+                  <p class="font-semibold text-slate-300">No After Photo Uploaded Yet</p>
+                  <p class="text-[11px] text-slate-400">Upload rectification evidence below before closing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload / Update After Photo Controls -->
+          <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-extrabold text-emerald-950">Upload / Replace After Photo</span>
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-emerald-900">
+                <input id="detail-watermark-after" type="checkbox" checked class="w-3.5 h-3.5 rounded text-emerald-700" />
+                <span>Add Date & Location Watermark</span>
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" onclick="document.getElementById('file-after-camera').click()" class="py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                Camera After
+              </button>
+              <button type="button" onclick="document.getElementById('file-after-gallery').click()" class="py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-100/70 active:scale-95 text-emerald-900 border border-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                Gallery After
+              </button>
+            </div>
+            <input id="file-after-camera" type="file" accept="image/*" capture="environment" class="hidden" />
+            <input id="file-after-gallery" type="file" accept="image/*" class="hidden" />
+            <p id="detail-after-size-info" class="hidden text-[11px] font-mono font-bold text-emerald-800"></p>
+          </div>
+        </div>
+
+        <!-- Update Work Status -->
+        <div>
+          <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Update Rectification Status</span>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="detail-status" value="Open" class="peer sr-only" />
+              <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-red-600 peer-checked:text-white peer-checked:border-red-600 transition">
+                Open
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="detail-status" value="In Progress" class="peer sr-only" />
+              <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 transition">
+                In Progress
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="detail-status" value="Re-check" class="peer sr-only" />
+              <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition">
+                Re-check
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="detail-status" value="Closed" class="peer sr-only" />
+              <div class="text-center py-2.5 px-2 rounded-xl border border-slate-300 text-xs font-extrabold text-slate-700 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">
+                Closed
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- QC Remarks / Field Notes -->
+        <div>
+          <label for="detail-catatan-qc" class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1">QC Remarks / Corrective Action Notes</label>
+          <textarea id="detail-catatan-qc" rows="2" placeholder="Enter verification notes, rectification instructions, or contractor follow-up..." class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-slate-200">
+          <button id="btn-delete-defect" type="button" class="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs transition">
+            Delete Finding
+          </button>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button id="btn-cancel-detail" type="button" class="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition">
+              Cancel
+            </button>
+            <button id="btn-save-detail" type="button" class="flex-1 sm:flex-none py-2.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm transition">
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: QC INSPECTOR & APPROVER PROFILE SETTINGS                     -->
+  <!-- ===================================================================== -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 print:hidden">
+    <div class="bg-white rounded-2xl max-w-lg mx-auto my-4 shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Report & Watermark Identity</span>
+          <h2 class="text-base font-extrabold">Profile & Settings</h2>
+        </div>
+        <button id="btn-close-settings" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-5">
+        <form id="form-settings-profile" class="space-y-3.5">
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Manually enter the <strong>QC Inspector</strong> and <strong>Approver</strong> names below. Entered names appear on photo watermarks and PDF report signature blocks (if left blank, a blank signature line will be printed).
+          </p>
+          <div>
+            <label for="setting-inspector-name" class="block text-xs font-bold text-slate-700 mb-1">QC Inspector Name (Prepared By)</label>
+            <input id="setting-inspector-name" type="text" placeholder="Enter QC Inspector name..." class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+          </div>
+          <div>
+            <label for="setting-approver-name" class="block text-xs font-bold text-slate-700 mb-1">Approver Name (Reviewed / Approved By)</label>
+            <input id="setting-approver-name" type="text" placeholder="Enter Approver name..." class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-sm transition">
+              Save Profile
+            </button>
+            <button id="btn-open-projects-from-settings" type="button" class="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 transition">
+              Manage Projects
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2B: PROJECT MANAGEMENT (ADD, RENAME & DELETE PROJECTS)          -->
+  <!-- ===================================================================== -->
+  <div id="modal-projects" class="hidden fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs overflow-y-auto p-3 sm:p-6 print:hidden">
+    <div class="bg-white rounded-2xl max-w-xl mx-auto my-4 shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Construction Project Register</span>
+          <h2 class="text-base font-extrabold">Manage Projects</h2>
+        </div>
+        <button id="btn-close-projects" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-5">
+        <!-- Add New Project -->
+        <form id="form-add-project" class="space-y-2.5">
+          <label for="new-project-name" class="block text-xs font-extrabold uppercase tracking-wider text-slate-600">Add New Project</label>
+          <div class="flex gap-2">
+            <input id="new-project-name" type="text" required placeholder="Enter new project name..." class="flex-1 px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+            <button type="submit" class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-extrabold text-xs shrink-0 shadow-sm transition">
+              + Add
+            </button>
+          </div>
+        </form>
+
+        <hr class="border-slate-200" />
+
+        <!-- Registered Projects List -->
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Registered Projects (<span id="projects-total-count">0</span>)</h3>
+            <span class="text-[11px] text-slate-500">Rename or delete permanently</span>
+          </div>
+          <ul id="projects-manage-list" class="divide-y divide-slate-200 border border-slate-200 rounded-2xl overflow-hidden text-xs sm:text-sm">
+            <!-- Populated via JS -->
+          </ul>
+          <div id="projects-empty-notice" class="hidden rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">
+            No registered projects yet. Add a new project using the form above.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: A4 PRINT REPORT PREVIEW                                      -->
+  <!-- ===================================================================== -->
+  <div id="modal-print-preview" class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-xs overflow-y-auto p-2 sm:p-6 print:hidden">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-300">
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+        <span class="text-xs sm:text-sm font-bold">A4 Report Document Preview</span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.print()" class="px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs">
+            Print / Save PDF
+          </button>
+          <button id="btn-close-preview-modal" type="button" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold">
+            Close
+          </button>
+        </div>
+      </div>
+      <div id="preview-report-mount" class="p-4 sm:p-8 bg-white text-slate-900 overflow-x-auto">
+        <!-- Cloned A4 report rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: FULL-SCREEN PHOTO LIGHTBOX ZOOM                              -->
+  <!-- ===================================================================== -->
+  <div id="modal-lightbox" class="hidden fixed inset-0 z-50 bg-slate-950/95 flex flex-col print:hidden">
+    <div class="px-4 py-3 flex items-center justify-between text-white border-b border-slate-800">
+      <div>
+        <span id="lightbox-label" class="text-xs font-extrabold uppercase tracking-wider text-amber-400">BEFORE PHOTO</span>
+        <p id="lightbox-caption" class="text-xs text-slate-300">DEF-202611-001</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-toggle-zoom" type="button" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white border border-slate-700">
+          Zoom 2x
+        </button>
+        <button id="btn-close-lightbox" type="button" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+    <div id="lightbox-scroll-area" class="flex-1 overflow-auto flex items-center justify-center p-4">
+      <img id="lightbox-img" alt="Zoomed Inspection Photo" class="max-h-full max-w-full object-contain transition-transform duration-200 origin-center" />
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5: CUSTOM CONFIRMATION DIALOG (REPLACES alert / confirm)        -->
+  <!-- ===================================================================== -->
+  <div id="modal-confirm" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 print:hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-start gap-3">
+        <div id="confirm-icon-box" class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+        </div>
+        <div>
+          <h3 id="confirm-title" class="text-base font-extrabold text-slate-900">Confirmation</h3>
+          <p id="confirm-message" class="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">-</p>
+        </div>
+      </div>
+      <div id="confirm-actions" class="flex items-center justify-end gap-2 pt-2 flex-wrap">
+        <!-- Dynamic buttons rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-16 right-3 left-3 sm:left-auto sm:w-80 z-50 space-y-2 pointer-events-none print:hidden"></div>
+
+  <!-- ===================================================================== -->
+  <!-- DEDICATED A4 PRINT / PDF DOCUMENT (@media print)                      -->
+  <!-- ===================================================================== -->
+  <div id="print-report-container" class="hidden print:block bg-white text-slate-900 text-xs">
+    <!-- Official A4 report rendered here -->
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC (INDEXEDDB, AUTO-COMPRESS, WATERMARK, UI & EXPORT)  -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* -------------------------------------------------------------------
+       * 1. CONFIGURATION & APPLICATION STATE
+       * ------------------------------------------------------------------- */
+      const DB_NAME = 'QCInspectorProDB';
+      const DB_VERSION = 1;
+
+      const INITIAL_PROJECTS = [
+        { id: 'proj-1', name: 'DC Kawan Lama Sidoarjo Extension', createdAt: '2026-11-01T08:00:00Z' },
+        { id: 'proj-2', name: 'Project Golden Manufaktur Kendal', createdAt: '2026-11-01T08:05:00Z' },
+        { id: 'proj-3', name: 'Renovasi Showroom Kawan Lama Solution Juanda', createdAt: '2026-11-01T08:10:00Z' },
+        { id: 'proj-4', name: 'Project Golden Inovasi Indonesia', createdAt: '2026-11-01T08:15:00Z' },
+      ];
+
+      let db = null;
+      const state = {
+        projects: [],
+        defects: [],
+        activeProjectId: 'proj-1',
+        inspectorName: '',
+        approverName: '',
+        editingProjectId: null,
+        filters: {
+          search: '',
+          status: 'ALL',
+          category: 'ALL',
+          urgency: 'ALL',
+          sort: 'new',
+        },
+        lastBackupAt: 0,
+        createBeforeBlob: null,
+        selectedDefectId: null,
+        detailNewAfterBlob: null,
+        lightboxZoomed: false,
+      };
+
+      // ObjectURL cache to prevent memory leaks & accelerate image rendering
+      const objectUrlCache = new Map();
+      function getBlobUrl(key, blob) {
+        if (!blob) return '';
+        const existing = objectUrlCache.get(key);
+        if (existing && existing.blob === blob) {
+          return existing.url;
+        }
+        if (existing) {
+          URL.revokeObjectURL(existing.url);
+        }
+        const url = URL.createObjectURL(blob);
+        objectUrlCache.set(key, { blob, url });
+        return url;
+      }
+
+      /* -------------------------------------------------------------------
+       * 2. INDEXEDDB STORAGE LAYER
+       * ------------------------------------------------------------------- */
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains('projects')) {
+              database.createObjectStore('projects', { keyPath: 'id' });
+            }
+            if (!database.objectStoreNames.contains('defects')) {
+              const defectStore = database.createObjectStore('defects', { keyPath: 'id' });
+              defectStore.createIndex('projectId', 'projectId', { unique: false });
+            }
+            if (!database.objectStoreNames.contains('settings')) {
+              database.createObjectStore('settings', { keyPath: 'key' });
+            }
+          };
+
+          request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db);
+          };
+
+          request.onerror = (event) => {
+            reject(event.target.error);
+          };
+        });
+      }
+
+      function dbGetAll(storeName) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readonly');
+          const store = tx.objectStore(storeName);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbPut(storeName, value) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.put(value);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbDelete(storeName, key) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.delete(key);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function dbClearStore(storeName) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function getSetting(key, defaultValue) {
+        const all = await dbGetAll('settings');
+        const found = all.find((item) => item.key === key);
+        return found ? found.value : defaultValue;
+      }
+
+      async function setSetting(key, value) {
+        await dbPut('settings', { key, value });
+      }
+
+      /* -------------------------------------------------------------------
+       * 3. TECHNICAL DIAGRAM GENERATOR FOR 2 INITIAL SAMPLE ITEMS
+       * ------------------------------------------------------------------- */
+      function generateTechnicalDiagramBlob({ title, subtitle, grid, dateText, mode }) {
+        return new Promise((resolve) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 960;
+          canvas.height = 640;
+          const ctx = canvas.getContext('2d');
+
+          ctx.fillStyle = '#f1f5f9';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Engineering grid lines
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          for (let x = 40; x < canvas.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+          }
+          for (let y = 40; y < canvas.height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+          }
+
+          // Top banner
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(32, 28, 896, 62);
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 20px Inter, sans-serif';
+          ctx.fillText(title, 52, 56);
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '15px Inter, sans-serif';
+          ctx.fillText(subtitle, 52, 78);
+
+          if (mode === 'slab-crack') {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(140, 140, 680, 380);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(140, 140, 680, 380);
+
+            ctx.strokeStyle = '#334155';
+            ctx.setLineDash([12, 8]);
+            ctx.beginPath();
+            ctx.moveTo(480, 140);
+            ctx.lineTo(480, 520);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(480, 195);
+            ctx.lineTo(458, 245);
+            ctx.lineTo(472, 295);
+            ctx.lineTo(446, 355);
+            ctx.lineTo(464, 415);
+            ctx.lineTo(440, 465);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(462, 330, 115, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#991b1b';
+            ctx.fillRect(595, 295, 205, 58);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px Inter, sans-serif';
+            ctx.fillText('DEFECT: HAIRLINE CRACK', 608, 320);
+            ctx.font = '13px Inter, sans-serif';
+            ctx.fillText('Length ±1.2m | Dev >3mm', 608, 340);
+          } else if (mode === 'column-before') {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(340, 130, 280, 330);
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(250, 460, 460, 75);
+
+            ctx.fillStyle = '#7f1d1d';
+            ctx.beginPath();
+            ctx.ellipse(425, 430, 68, 28, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fca5a5';
+            for (let i = 0; i < 18; i++) {
+              const rx = 375 + ((i * 19) % 100);
+              const ry = 418 + ((i * 11) % 24);
+              ctx.beginPath();
+              ctx.arc(rx, ry, 4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(425, 430, 88, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#991b1b';
+            ctx.fillRect(540, 370, 250, 56);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px Inter, sans-serif';
+            ctx.fillText('UNSEALED SLEEVE ±25mm', 555, 395);
+            ctx.font = '13px Inter, sans-serif';
+            ctx.fillText('ME Shaft Penetration Gap', 555, 415);
+          } else {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(340, 130, 280, 330);
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(250, 460, 460, 75);
+
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(350, 395, 165, 65);
+            ctx.strokeStyle = '#047857';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(350, 395, 165, 65);
+
+            ctx.fillStyle = '#065f46';
+            ctx.fillRect(540, 370, 265, 58);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px Inter, sans-serif';
+            ctx.fillText('VERIFIED OK — GROUTED', 555, 395);
+            ctx.font = '13px Inter, sans-serif';
+            ctx.fillText('Non-Shrink Grout Sealed', 555, 415);
+          }
+
+          // Bottom watermark
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(0, canvas.height - 44, canvas.width, 44);
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.fillText(`QC INSPECTOR  •  LOCATION: ${grid}  •  DATE: ${dateText}`, 24, canvas.height - 17);
+
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.82);
+        });
+      }
+
+      async function seedInitialDataIfNeeded() {
+        const projectsSeededDB = await getSetting('projectsSeeded', false);
+        const projectsSeededLocal = localStorage.getItem('qc_projects_seeded') === 'true';
+
+        if (!projectsSeededDB && !projectsSeededLocal) {
+          const existingProjects = await dbGetAll('projects');
+          if (existingProjects.length === 0) {
+            for (const proj of INITIAL_PROJECTS) {
+              await dbPut('projects', proj);
+            }
+          }
+          await setSetting('projectsSeeded', true);
+          localStorage.setItem('qc_projects_seeded', 'true');
+        }
+
+        const sampleSeeded = await getSetting('sampleSeeded', false);
+        if (!sampleSeeded) {
+          const todayStr = getTodayISO();
+          const targetStr = addDaysISO(todayStr, 4);
+
+          const before1 = await generateTechnicalDiagramBlob({
+            title: 'QC FINDING DOCUMENTATION — BEFORE',
+            subtitle: 'DC Kawan Lama Sidoarjo Extension • Category SAP',
+            grid: 'Grid C-4 / Axis 06, Main Warehouse Zone',
+            dateText: formatDateID(todayStr),
+            mode: 'slab-crack',
+          });
+
+          const before2 = await generateTechnicalDiagramBlob({
+            title: 'QC FINDING DOCUMENTATION — BEFORE',
+            subtitle: 'DC Kawan Lama Sidoarjo Extension • Category ME',
+            grid: 'Grid A-2 / Axis 01, Panel Room & ME Shaft',
+            dateText: formatDateID(todayStr),
+            mode: 'column-before',
+          });
+
+          const after2 = await generateTechnicalDiagramBlob({
+            title: 'QC RECTIFICATION DOCUMENTATION — AFTER',
+            subtitle: 'DC Kawan Lama Sidoarjo Extension • ME Rectification OK',
+            grid: 'Grid A-2 / Axis 01, Panel Room & ME Shaft',
+            dateText: formatDateID(todayStr),
+            mode: 'column-after',
+          });
+
+          const sampleDefects = [
+            {
+              id: 'sample-def-1',
+              projectId: 'proj-1',
+              defectCode: 'DEF-202611-001',
+              tanggalTemuan: todayStr,
+              targetSelesai: targetStr,
+              lokasiGrid: 'Grid C-4 / Axis 06, Main Warehouse Zone',
+              kategori: 'SAP',
+              urgensi: 'Major',
+              deskripsi:
+                'Hairline crack approximately 1.2m long along the concrete slab construction joint with floor flatness deviation exceeding the 3mm/2m tolerance.',
+              status: 'Open',
+              catatanQc: 'Perform PU joint sealing and localized floor grinding prior to warehouse racking installation.',
+              tanggalClose: '',
+              fotoBeforeBlob: before1,
+              fotoAfterBlob: null,
+              isSample: true,
+              createdAt: new Date(Date.now() - 3600000).toISOString(),
+              updatedAt: new Date(Date.now() - 3600000).toISOString(),
+            },
+            {
+              id: 'sample-def-2',
+              projectId: 'proj-1',
+              defectCode: 'DEF-202611-002',
+              tanggalTemuan: todayStr,
+              targetSelesai: todayStr,
+              lokasiGrid: 'Grid A-2 / Axis 01, Panel Room & ME Shaft',
+              kategori: 'ME',
+              urgensi: 'Critical',
+              deskripsi:
+                'ME pipe sleeves and feeder cable penetrations through structural slab left unsealed without firestop / non-shrink grouting.',
+              status: 'Closed',
+              catatanQc:
+                'Cleaned sleeve opening, applied bonding agent, and completed non-shrink grouting seal. Inspected dense and flush.',
+              tanggalClose: todayStr,
+              fotoBeforeBlob: before2,
+              fotoAfterBlob: after2,
+              isSample: true,
+              createdAt: new Date(Date.now() - 7200000).toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ];
+
+          for (const item of sampleDefects) {
+            await dbPut('defects', item);
+          }
+          await setSetting('sampleSeeded', true);
+        }
+      }
+
+      /* -------------------------------------------------------------------
+       * 4. AUTO-COMPRESSION & WATERMARK ENGINE (MAX 1024PX, JPEG 0.75)
+       * ------------------------------------------------------------------- */
+      function processInspectionImage(file, { addWatermark = true, projectName = '', lokasiGrid = '', inspectorName = '' } = {}) {
+        return new Promise((resolve, reject) => {
+          if (!file || !file.type.startsWith('image/')) {
+            reject(new Error('Selected file is not a valid image.'));
+            return;
+          }
+
+          const tempUrl = URL.createObjectURL(file);
+          const img = new Image();
+
+          img.onload = () => {
+            URL.revokeObjectURL(tempUrl);
+
+            const MAX_WIDTH = 1024;
+            let targetWidth = img.naturalWidth || img.width;
+            let targetHeight = img.naturalHeight || img.height;
+
+            if (targetWidth > MAX_WIDTH) {
+              const ratio = MAX_WIDTH / targetWidth;
+              targetWidth = MAX_WIDTH;
+              targetHeight = Math.round(targetHeight * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+            if (addWatermark) {
+              const barHeight = Math.max(44, Math.round(targetHeight * 0.085));
+              const fontSizePrimary = Math.max(12, Math.round(barHeight * 0.32));
+              const fontSizeSecondary = Math.max(11, Math.round(barHeight * 0.28));
+
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.80)';
+              ctx.fillRect(0, targetHeight - barHeight, targetWidth, barHeight);
+
+              const now = new Date();
+              const pad = (n) => String(n).padStart(2, '0');
+              const timestamp = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+              const locLabel = (lokasiGrid || 'Project Site').trim();
+              const projLabel = (projectName || 'QC Inspection').trim();
+              const inspectorClean = (inspectorName || '').trim();
+
+              ctx.fillStyle = '#fbbf24';
+              ctx.font = `bold ${fontSizePrimary}px Inter, sans-serif`;
+              ctx.fillText(`QC INSPECTOR • ${projLabel}`, 14, targetHeight - barHeight + Math.round(barHeight * 0.42));
+
+              ctx.fillStyle = '#f8fafc';
+              ctx.font = `600 ${fontSizeSecondary}px Inter, sans-serif`;
+              const secondaryWatermark = inspectorClean
+                ? `LOCATION: ${locLabel}  |  ${timestamp}  |  QC: ${inspectorClean}`
+                : `LOCATION: ${locLabel}  |  ${timestamp}`;
+              ctx.fillText(secondaryWatermark, 14, targetHeight - Math.round(barHeight * 0.18));
+            }
+
+            canvas.toBlob(
+              (compressedBlob) => {
+                if (!compressedBlob) {
+                  reject(new Error('Failed to compress image.'));
+                  return;
+                }
+                resolve({
+                  blob: compressedBlob,
+                  originalSize: file.size,
+                  compressedSize: compressedBlob.size,
+                });
+              },
+              'image/jpeg',
+              0.75
+            );
+          };
+
+          img.onerror = () => {
+            URL.revokeObjectURL(tempUrl);
+            reject(new Error('Failed to read image file.'));
+          };
+
+          img.src = tempUrl;
+        });
+      }
+
+      /* -------------------------------------------------------------------
+       * 5. DATE, FORMATTING, DIALOG & NAVIGATION UTILITIES
+       * ------------------------------------------------------------------- */
+      function getTodayISO() {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+
+      function addDaysISO(isoDate, days) {
+        const d = new Date(isoDate + 'T00:00:00');
+        d.setDate(d.getDate() + days);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+
+      function formatDateID(isoDate) {
+        if (!isoDate) return '-';
+        const parts = isoDate.split('-');
+        if (parts.length !== 3) return isoDate;
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes) return '0 KB';
+        if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+      }
+
+      function getActiveProject() {
+        return state.projects.find((p) => p.id === state.activeProjectId) || null;
+      }
+
+      function generateNextDefectCode() {
+        const now = new Date();
+        const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const prefix = `DEF-${ym}-`;
+        const projectDefects = state.defects.filter((d) => d.projectId === state.activeProjectId);
+
+        let maxSeq = 0;
+        for (const item of projectDefects) {
+          if (item.defectCode && item.defectCode.startsWith(prefix)) {
+            const numPart = parseInt(item.defectCode.slice(prefix.length), 10);
+            if (!isNaN(numPart) && numPart > maxSeq) {
+              maxSeq = numPart;
+            }
+          }
+        }
+        return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+      }
+
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const styleMap = {
+          success: 'bg-slate-900 text-white border-emerald-500',
+          warning: 'bg-amber-50 text-amber-950 border-amber-400',
+          error: 'bg-red-600 text-white border-red-800',
+        };
+        toast.className = `pointer-events-auto px-4 py-3 rounded-xl border-l-4 shadow-lg text-xs font-bold transition-all duration-300 ${styleMap[type] || styleMap.success}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-1');
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      function showConfirmDialog({
+        title = 'Confirmation',
+        message = '',
+        confirmText = 'Confirm',
+        cancelText = 'Cancel',
+        extraButtonText = '',
+        confirmStyle = 'primary',
+      }) {
+        return new Promise((resolve) => {
+          const modal = document.getElementById('modal-confirm');
+          document.getElementById('confirm-title').textContent = title;
+          document.getElementById('confirm-message').textContent = message;
+
+          const iconBox = document.getElementById('confirm-icon-box');
+          if (confirmStyle === 'danger') {
+            iconBox.className = 'w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center shrink-0';
+          } else {
+            iconBox.className = 'w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0';
+          }
+
+          const actionsEl = document.getElementById('confirm-actions');
+          actionsEl.innerHTML = '';
+
+          const cleanup = (result) => {
+            modal.classList.add('hidden');
+            resolve(result);
+          };
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.className = 'px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition';
+          cancelBtn.textContent = cancelText;
+          cancelBtn.onclick = () => cleanup(false);
+          actionsEl.appendChild(cancelBtn);
+
+          if (extraButtonText) {
+            const extraBtn = document.createElement('button');
+            extraBtn.type = 'button';
+            extraBtn.className = 'px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition';
+            extraBtn.textContent = extraButtonText;
+            extraBtn.onclick = () => cleanup('extra');
+            actionsEl.appendChild(extraBtn);
+          }
+
+          const confirmBtn = document.createElement('button');
+          confirmBtn.type = 'button';
+          confirmBtn.className =
+            confirmStyle === 'danger'
+              ? 'px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-xs transition'
+              : 'px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-xs transition';
+          confirmBtn.textContent = confirmText;
+          confirmBtn.onclick = () => cleanup(true);
+          actionsEl.appendChild(confirmBtn);
+
+          modal.classList.remove('hidden');
+        });
+      }
+
+      function switchView(viewName) {
+        const views = ['list', 'create', 'reports'];
+        views.forEach((v) => {
+          const el = document.getElementById(`view-${v}`);
+          if (el) el.classList.toggle('hidden', v !== viewName);
+        });
+
+        // Update desktop tab states
+        document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
+          const active = btn.dataset.nav === viewName;
+          btn.classList.toggle('bg-amber-400', active);
+          btn.classList.toggle('text-slate-950', active);
+          btn.classList.toggle('text-slate-300', !active);
+          btn.classList.toggle('hover:text-white', !active);
+        });
+
+        // Update mobile bottom bar states
+        document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
+          if (btn.dataset.nav === 'create') return;
+          const active = btn.dataset.nav === viewName;
+          btn.classList.toggle('text-slate-900', active);
+          btn.classList.toggle('font-bold', active);
+          btn.classList.toggle('text-slate-500', !active);
+          btn.classList.toggle('font-semibold', !active);
+        });
+
+        if (viewName === 'create') {
+          prepareCreateForm();
+        } else if (viewName === 'reports') {
+          const activeProj = getActiveProject();
+          document.getElementById('report-project-name').textContent = activeProj ? activeProj.name : '-';
+          document.getElementById('db-storage-summary').textContent = `Active (${state.projects.length} Projects, ${state.defects.length} Findings)`;
+        }
+      }
+      window.switchView = switchView;
+
+      function getStatusBadgeClasses(status) {
+        switch (status) {
+          case 'Open':
+            return 'bg-red-100 text-red-800 border-red-300';
+          case 'In Progress':
+            return 'bg-amber-100 text-amber-800 border-amber-300';
+          case 'Re-check':
+            return 'bg-blue-100 text-blue-800 border-blue-300';
+          case 'Closed':
+            return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+          default:
+            return 'bg-slate-100 text-slate-800 border-slate-300';
+        }
+      }
+
+      function getUrgencyBadgeClasses(urgency) {
+        switch (urgency) {
+          case 'Critical':
+            return 'bg-red-600 text-white border-red-700';
+          case 'Major':
+            return 'bg-orange-100 text-orange-800 border-orange-300';
+          default:
+            return 'bg-slate-100 text-slate-700 border-slate-300';
+        }
+      }
+
+      function getCategoryBadgeClasses(kategori) {
+        if (kategori === 'ME') {
+          return 'bg-cyan-100 text-cyan-800 border-cyan-300';
+        }
+        return 'bg-indigo-100 text-indigo-800 border-indigo-300';
+      }
+
+      /* -------------------------------------------------------------------
+       * 6. HEADER, KPI DASHBOARD & DEFECT LIST RENDERING
+       * ------------------------------------------------------------------- */
+      function updateHeaderInspectorDisplay() {
+        const el = document.getElementById('header-inspector-name');
+        const cleanName = (state.inspectorName || '').trim();
+        if (cleanName) {
+          el.textContent = cleanName;
+          el.className = 'text-slate-200 font-semibold';
+        } else {
+          el.textContent = 'Not set (Tap to enter)';
+          el.className = 'text-amber-300 font-semibold underline decoration-dotted';
+        }
+      }
+
+      function renderProjectSelector() {
+        const selector = document.getElementById('project-selector');
+        selector.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          const emptyOpt = document.createElement('option');
+          emptyOpt.value = '';
+          emptyOpt.textContent = 'No projects yet (Tap Manage Projects)';
+          selector.appendChild(emptyOpt);
+        } else {
+          state.projects.forEach((proj) => {
+            const opt = document.createElement('option');
+            opt.value = proj.id;
+            opt.textContent = proj.name;
+            if (proj.id === state.activeProjectId) opt.selected = true;
+            selector.appendChild(opt);
+          });
+        }
+
+        const activeProj = getActiveProject();
+        document.getElementById('kpi-project-title').textContent = activeProj ? activeProj.name : 'No Active Project Selected';
+        document.getElementById('create-active-project-label').textContent = activeProj ? activeProj.name : 'No Active Project Selected';
+        document.getElementById('report-project-name').textContent = activeProj ? activeProj.name : '-';
+      }
+
+      /* ---- Enhancements: overdue tracking, sorting, insights, WhatsApp share, storage safety ---- */
+      const URG_RANK = { Critical: 0, Major: 1, Minor: 2 };
+      function isOverdue(d) { return d.status !== 'Closed' && !!d.targetSelesai && d.targetSelesai < getTodayISO(); }
+      function daysLate(d) { return Math.max(1, Math.round((new Date(getTodayISO()) - new Date(d.targetSelesai)) / 864e5)); }
+      function applySort(list) {
+        const s = state.filters.sort;
+        const urg = (d) => (URG_RANK[d.urgensi] ?? 3);
+        if (s === 'urgency') list.sort((a, b) => urg(a) - urg(b) || (a.targetSelesai || '9999').localeCompare(b.targetSelesai || '9999'));
+        else if (s === 'target') list.sort((a, b) => (a.targetSelesai || '9999').localeCompare(b.targetSelesai || '9999'));
+        else if (s === 'location') list.sort((a, b) => String(a.lokasiGrid).localeCompare(String(b.lokasiGrid), undefined, { numeric: true }));
+        return list;
+      }
+      function updateInsights(list) {
+        const box = document.getElementById('qc-insights');
+        if (!box) return;
+        const live = list.filter((d) => d.status !== 'Closed');
+        const n = (u) => live.filter((d) => d.urgensi === u).length;
+        const late = list.filter(isOverdue).length;
+        const lateCount = document.getElementById('pill-count-overdue');
+        if (lateCount) lateCount.textContent = late;
+        const seg = (u, c) => (n(u) ? `<div class="${c} h-full" style="width:${(n(u) / live.length) * 100}%"></div>` : '');
+        const days = state.lastBackupAt ? Math.floor((Date.now() - state.lastBackupAt) / 864e5) : null;
+        const stale = list.length > 0 && (days === null || days >= 7);
+        const backupLabel = days === null ? 'Never backed up - back up now' : days === 0 ? 'Backed up today' : `Backed up ${days}d ago${stale ? ' - back up now' : ''}`;
+        box.innerHTML = `
+          <div class="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600">
+            <span>Unresolved by urgency</span>
+            <span>${live.length ? `<b class="text-red-700">${n('Critical')} Critical</b> / <b class="text-orange-600">${n('Major')} Major</b> / <b class="text-yellow-600">${n('Minor')} Minor</b>` : '<b class="text-emerald-700">All findings closed</b>'}</span>
+          </div>
+          <div class="flex h-2 rounded-full overflow-hidden bg-slate-100 border border-slate-200">${seg('Critical', 'bg-red-600')}${seg('Major', 'bg-orange-500')}${seg('Minor', 'bg-yellow-400')}</div>
+          <div class="flex flex-wrap items-center gap-2 pt-0.5">
+            ${late ? `<button type="button" data-act="late" class="px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-300 text-[11px] font-extrabold">${late} past target date - show</button>` : '<span class="text-[11px] font-semibold text-emerald-700">No overdue items</span>'}
+            <button type="button" data-act="wa" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-extrabold">Share status to WhatsApp</button>
+            <button type="button" data-act="backup" class="px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${stale ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-white text-slate-600 border-slate-200'}">${backupLabel}</button>
+          </div>`;
+      }
+      function shareWhatsApp() {
+        const p = getActiveProject();
+        const list = state.defects.filter((d) => d.projectId === state.activeProjectId);
+        const c = (st) => list.filter((d) => d.status === st).length;
+        const closed = c('Closed');
+        const pct = list.length ? Math.round((closed / list.length) * 100) : 0;
+        const urgent = list.filter((d) => d.status !== 'Closed' && d.urgensi !== 'Minor')
+          .sort((a, b) => (URG_RANK[a.urgensi] ?? 3) - (URG_RANK[b.urgensi] ?? 3)).slice(0, 8);
+        const lines = [
+          `*Status QC - ${p ? p.name : '-'}*`,
+          formatDateID(getTodayISO()),
+          `Total ${list.length} | Open ${c('Open')} | Progress ${c('In Progress')} | Re-check ${c('Re-check')} | Closed ${closed} (${pct}%)`,
+          `Lewat target: ${list.filter(isOverdue).length}`,
+        ];
+        if (urgent.length) {
+          lines.push('', '*Prioritas (Critical/Major belum closed):*');
+          urgent.forEach((d, i) => lines.push(`${i + 1}. ${d.defectCode} [${d.urgensi}] ${d.lokasiGrid} - ${String(d.deskripsi).slice(0, 70)}${isOverdue(d) ? ` (telat ${daysLate(d)} hari)` : ''}`));
+        }
+        if (state.inspectorName) lines.push('', `Inspector: ${state.inspectorName}`);
+        const text = lines.join('\n');
+        const w = window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+        if (!w && navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('Ringkasan disalin, tempel di WhatsApp.'));
+      }
+      function enhanceUI() {
+        const urg = document.getElementById('filter-urgency');
+        if (urg && !document.getElementById('filter-sort')) {
+          const sel = urg.cloneNode(false);
+          sel.id = 'filter-sort';
+          sel.setAttribute('aria-label', 'Sort findings');
+          sel.innerHTML = '<option value="new">Newest first</option><option value="urgency">Most urgent first</option><option value="target">Nearest target date</option><option value="location">Grid / location</option>';
+          sel.addEventListener('change', () => { state.filters.sort = sel.value; renderDashboardAndList(); });
+          urg.after(sel);
+        }
+        // Overdue pill is cloned before bindEvents() so it inherits the status pill handler
+        const closedPill = document.querySelector('[data-status-filter="Closed"]');
+        if (closedPill && !document.querySelector('[data-status-filter="OVERDUE"]')) {
+          const pill = closedPill.cloneNode(true);
+          pill.dataset.statusFilter = 'OVERDUE';
+          pill.innerHTML = 'Overdue (<span id="pill-count-overdue">0</span>)';
+          closedPill.after(pill);
+        }
+        const bar = document.getElementById('kpi-progress-bar');
+        if (bar && !document.getElementById('qc-insights')) {
+          const box = document.createElement('div');
+          box.id = 'qc-insights';
+          box.className = 'space-y-2 pt-0.5';
+          bar.parentElement.after(box);
+          box.addEventListener('click', (e) => {
+            const act = e.target.closest('[data-act]')?.dataset.act;
+            if (act === 'late') document.querySelector('[data-status-filter="OVERDUE"]').click();
+            if (act === 'wa') shareWhatsApp();
+            if (act === 'backup') document.getElementById('btn-backup-json').click();
+          });
+        }
+        document.getElementById('btn-backup-json')?.addEventListener('click', () => {
+          state.lastBackupAt = Date.now();
+          setSetting('lastBackupAt', state.lastBackupAt);
+          renderDashboardAndList();
+        }, true);
+        getSetting('lastBackupAt', 0).then((v) => { state.lastBackupAt = v || 0; renderDashboardAndList(); });
+        renderDashboardAndList();
+        (async () => {
+          try {
+            const persisted = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false;
+            const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+            const host = document.getElementById('db-storage-summary');
+            if (host && est) {
+              const tag = document.createElement('span');
+              tag.className = 'block text-[11px] font-medium text-slate-500 mt-0.5';
+              tag.textContent = `${formatBytes(est.usage || 0)} used of ${formatBytes(est.quota || 0)}${persisted ? ' (protected storage)' : ''}`;
+              host.after(tag);
+            }
+          } catch (e) { /* storage estimate not supported */ }
+        })();
+      }
+
+      function renderDashboardAndList() {
+        const projectDefects = state.activeProjectId
+          ? state.defects
+              .filter((d) => d.projectId === state.activeProjectId)
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          : [];
+
+        // Sample banner visibility
+        const hasSamples = state.defects.some((d) => d.isSample);
+        document.getElementById('sample-data-banner').classList.toggle('hidden', !hasSamples);
+
+        // Calculate KPI metrics
+        const total = projectDefects.length;
+        const countOpen = projectDefects.filter((d) => d.status === 'Open').length;
+        const countProgress = projectDefects.filter((d) => d.status === 'In Progress').length;
+        const countRecheck = projectDefects.filter((d) => d.status === 'Re-check').length;
+        const countClosed = projectDefects.filter((d) => d.status === 'Closed').length;
+        const countSap = projectDefects.filter((d) => d.kategori === 'SAP').length;
+        const countMe = projectDefects.filter((d) => d.kategori === 'ME').length;
+        const percentClosed = total > 0 ? Math.round((countClosed / total) * 100) : 0;
+
+        document.getElementById('kpi-total').textContent = total;
+        document.getElementById('kpi-open').textContent = countOpen;
+        document.getElementById('kpi-progress').textContent = countProgress;
+        document.getElementById('kpi-recheck').textContent = countRecheck;
+        document.getElementById('kpi-closed').textContent = countClosed;
+        document.getElementById('kpi-cat-sap').textContent = countSap;
+        document.getElementById('kpi-cat-me').textContent = countMe;
+        document.getElementById('kpi-percent-text').textContent = `${percentClosed}%`;
+        document.getElementById('kpi-progress-bar').style.width = `${percentClosed}%`;
+        updateInsights(projectDefects);
+
+        // Update filter pill counts
+        document.getElementById('pill-count-all').textContent = total;
+        document.getElementById('pill-count-open').textContent = countOpen;
+        document.getElementById('pill-count-progress').textContent = countProgress;
+        document.getElementById('pill-count-recheck').textContent = countRecheck;
+        document.getElementById('pill-count-closed').textContent = countClosed;
+
+        // Apply active filters
+        const searchTerm = state.filters.search.trim().toLowerCase();
+        const filtered = projectDefects.filter((item) => {
+          if (state.filters.status === 'OVERDUE' ? !isOverdue(item) : state.filters.status !== 'ALL' && item.status !== state.filters.status) return false;
+          if (state.filters.category !== 'ALL' && item.kategori !== state.filters.category) return false;
+          if (state.filters.urgency !== 'ALL' && item.urgensi !== state.filters.urgency) return false;
+          if (searchTerm) {
+            const haystack = `${item.defectCode} ${item.lokasiGrid} ${item.deskripsi} ${item.catatanQc || ''}`.toLowerCase();
+            if (!haystack.includes(searchTerm)) return false;
+          }
+          return true;
+        });
+
+        applySort(filtered);
+        const container = document.getElementById('defect-list-container');
+        const emptyState = document.getElementById('defect-empty-state');
+        container.innerHTML = '';
+
+        if (filtered.length === 0) {
+          emptyState.classList.remove('hidden');
+          return;
+        }
+        emptyState.classList.add('hidden');
+
+        filtered.forEach((item) => {
+          const beforeUrl = getBlobUrl(`${item.id}-before`, item.fotoBeforeBlob);
+          const afterUrl = getBlobUrl(`${item.id}-after`, item.fotoAfterBlob);
+
+          const card = document.createElement('article');
+          card.className =
+            'bg-white rounded-2xl border border-slate-200 hover:border-slate-400 shadow-xs hover:shadow-md transition overflow-hidden flex flex-col justify-between cursor-pointer active:scale-[0.995]';
+          card.onclick = () => openDefectDetailModal(item.id);
+
+          const sampleTag = item.isSample
+            ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">SAMPLE</span>`
+            : '';
+
+          card.innerHTML = `
+            <div class="p-3.5 space-y-2.5">
+              <!-- Top Badge Row -->
+              <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-xs font-extrabold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">${escapeHtml(item.defectCode)}</span>
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${getCategoryBadgeClasses(item.kategori)}">${escapeHtml(item.kategori)}</span>
+                  ${sampleTag}
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border ${getUrgencyBadgeClasses(item.urgensi)}">${escapeHtml(item.urgensi)}</span>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${getStatusBadgeClasses(item.status)}">${escapeHtml(item.status)}</span>
+                </div>
+              </div>
+
+              <!-- Location & Date -->
+              <div>
+                <p class="text-xs font-extrabold text-slate-900 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                  <span class="truncate">${escapeHtml(item.lokasiGrid)}</span>
+                </p>
+                <p class="text-[11px] font-semibold text-slate-500 mt-0.5">Category: <strong class="text-slate-700">${escapeHtml(item.kategori)}</strong> • Date: ${formatDateID(item.tanggalTemuan)}</p>
+              </div>
+
+              <!-- Description -->
+              <p class="text-xs text-slate-700 line-clamp-2 leading-relaxed">${escapeHtml(item.deskripsi)}</p>
+
+              <!-- Before & After Thumbnails -->
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <div class="relative h-24 rounded-xl overflow-hidden bg-slate-900 border border-slate-200">
+                  ${
+                    beforeUrl
+                      ? `<img src="${beforeUrl}" alt="Before" class="w-full h-full object-cover" />`
+                      : `<div class="w-full h-full flex items-center justify-center text-[10px] text-slate-400">No Photo</div>`
+                  }
+                  <span class="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white text-[9px] font-extrabold tracking-wider">BEFORE</span>
+                </div>
+                <div class="relative h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                  ${
+                    afterUrl
+                      ? `<img src="${afterUrl}" alt="After" class="w-full h-full object-cover" /><span class="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-emerald-600/90 text-white text-[9px] font-extrabold tracking-wider">AFTER</span>`
+                      : `<div class="w-full h-full flex flex-col items-center justify-center text-center px-2 text-slate-400"><span class="text-[10px] font-semibold">No After Photo</span></div>`
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="px-3.5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">${item.targetSelesai ? `Target: ${formatDateID(item.targetSelesai)}` : 'No target date'}${isOverdue(item) ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-300 font-extrabold">LATE ${daysLate(item)}d</span>` : ''}</span>
+              <span class="font-bold text-slate-900 flex items-center gap-1">
+                Details & Update
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+              </span>
+            </div>
+          `;
+
+          container.appendChild(card);
+        });
+      }
+
+      /* -------------------------------------------------------------------
+       * 7. CREATE DEFECT FORM (QUICK FIELD INSPECTION)
+       * ------------------------------------------------------------------- */
+      function prepareCreateForm() {
+        document.getElementById('input-defect-code').value = generateNextDefectCode();
+        const today = getTodayISO();
+        document.getElementById('input-tanggal-temuan').value = today;
+        document.getElementById('input-target-selesai').value = addDaysISO(today, 3);
+        document.getElementById('input-lokasi-grid').value = '';
+        document.getElementById('input-deskripsi').value = '';
+        state.createBeforeBlob = null;
+        document.getElementById('create-before-preview-box').classList.add('hidden');
+        document.getElementById('file-before-camera').value = '';
+        document.getElementById('file-before-gallery').value = '';
+      }
+
+      async function handleCreateBeforePhotoSelected(file) {
+        if (!file) return;
+        try {
+          const activeProj = getActiveProject();
+          const lokasiGrid = document.getElementById('input-lokasi-grid').value;
+          const addWatermark = document.getElementById('input-watermark-before').checked;
+
+          const { blob, originalSize, compressedSize } = await processInspectionImage(file, {
+            addWatermark,
+            projectName: activeProj ? activeProj.name : '',
+            lokasiGrid,
+            inspectorName: state.inspectorName,
+          });
+
+          state.createBeforeBlob = blob;
+          const previewUrl = getBlobUrl('create-preview', blob);
+          document.getElementById('create-before-preview-img').src = previewUrl;
+          document.getElementById('create-before-size-info').textContent = `Compressed: ${formatBytes(originalSize)} → ${formatBytes(compressedSize)}`;
+          document.getElementById('create-before-preview-box').classList.remove('hidden');
+        } catch (err) {
+          showToast(err.message || 'Failed to process image.', 'error');
+        }
+      }
+
+      /* -------------------------------------------------------------------
+       * 8. DETAIL MODAL, PROGRESS UPDATE, CLOSING GUARD & LIGHTBOX ZOOM
+       * ------------------------------------------------------------------- */
+      function openDefectDetailModal(defectId) {
+        const defect = state.defects.find((d) => d.id === defectId);
+        if (!defect) return;
+
+        state.selectedDefectId = defect.id;
+        state.detailNewAfterBlob = null;
+
+        document.getElementById('detail-code').textContent = defect.defectCode;
+
+        const categoryBadge = document.getElementById('detail-category-badge');
+        categoryBadge.textContent = defect.kategori;
+        categoryBadge.className = `px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${getCategoryBadgeClasses(defect.kategori)}`;
+
+        const statusBadge = document.getElementById('detail-status-badge');
+        statusBadge.textContent = defect.status;
+        statusBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadgeClasses(defect.status)}`;
+
+        const urgencyBadge = document.getElementById('detail-urgency-badge');
+        urgencyBadge.textContent = defect.urgensi;
+        urgencyBadge.className = `px-2 py-0.5 rounded-md text-[11px] font-bold border ${getUrgencyBadgeClasses(defect.urgensi)}`;
+
+        document.getElementById('detail-lokasi').textContent = defect.lokasiGrid;
+        document.getElementById('detail-dates').textContent = `${formatDateID(defect.tanggalTemuan)} (Target: ${formatDateID(defect.targetSelesai)})`;
+        document.getElementById('detail-close-date').textContent = defect.tanggalClose ? formatDateID(defect.tanggalClose) : 'Not Closed';
+        document.getElementById('detail-deskripsi').textContent = defect.deskripsi;
+        document.getElementById('detail-catatan-qc').value = defect.catatanQc || '';
+
+        // Set status radio
+        document.querySelectorAll('input[name="detail-status"]').forEach((radio) => {
+          radio.checked = radio.value === defect.status;
+        });
+
+        // Before Photo
+        const beforeUrl = getBlobUrl(`${defect.id}-before`, defect.fotoBeforeBlob);
+        const beforeImg = document.getElementById('detail-before-img');
+        const beforeEmpty = document.getElementById('detail-before-empty');
+        if (beforeUrl) {
+          beforeImg.src = beforeUrl;
+          beforeImg.classList.remove('hidden');
+          beforeEmpty.classList.add('hidden');
+          document.getElementById('detail-before-wrapper').onclick = () =>
+            openLightbox(beforeUrl, 'BEFORE PHOTO (INITIAL FINDING)', `${defect.defectCode} • ${defect.lokasiGrid}`);
+        } else {
+          beforeImg.classList.add('hidden');
+          beforeEmpty.classList.remove('hidden');
+          document.getElementById('detail-before-wrapper').onclick = null;
+        }
+
+        // After Photo
+        const afterUrl = getBlobUrl(`${defect.id}-after`, defect.fotoAfterBlob);
+        renderDetailAfterImage(afterUrl, defect);
+
+        document.getElementById('detail-after-size-info').classList.add('hidden');
+        document.getElementById('file-after-camera').value = '';
+        document.getElementById('file-after-gallery').value = '';
+
+        document.getElementById('modal-defect-detail').classList.remove('hidden');
+      }
+
+      function renderDetailAfterImage(afterUrl, defect) {
+        const afterImg = document.getElementById('detail-after-img');
+        const afterEmpty = document.getElementById('detail-after-empty');
+        const zoomHint = document.getElementById('detail-after-zoom-hint');
+
+        if (afterUrl) {
+          afterImg.src = afterUrl;
+          afterImg.classList.remove('hidden');
+          afterEmpty.classList.add('hidden');
+          zoomHint.classList.remove('hidden');
+          afterImg.onclick = () =>
+            openLightbox(afterUrl, 'AFTER PHOTO (RECTIFICATION)', `${defect.defectCode} • ${defect.lokasiGrid}`);
+        } else {
+          afterImg.classList.add('hidden');
+          afterEmpty.classList.remove('hidden');
+          zoomHint.classList.add('hidden');
+          afterImg.onclick = null;
+        }
+      }
+
+      async function handleDetailAfterPhotoSelected(file) {
+        if (!file || !state.selectedDefectId) return;
+        const defect = state.defects.find((d) => d.id === state.selectedDefectId);
+        if (!defect) return;
+
+        try {
+          const activeProj = getActiveProject();
+          const addWatermark = document.getElementById('detail-watermark-after').checked;
+
+          const { blob, originalSize, compressedSize } = await processInspectionImage(file, {
+            addWatermark,
+            projectName: activeProj ? activeProj.name : '',
+            lokasiGrid: defect.lokasiGrid,
+            inspectorName: state.inspectorName,
+          });
+
+          state.detailNewAfterBlob = blob;
+          const previewUrl = getBlobUrl('detail-after-temp', blob);
+          renderDetailAfterImage(previewUrl, defect);
+
+          const sizeInfo = document.getElementById('detail-after-size-info');
+          sizeInfo.textContent = `After photo ready to save (${formatBytes(originalSize)} → ${formatBytes(compressedSize)})`;
+          sizeInfo.classList.remove('hidden');
+        } catch (err) {
+          showToast(err.message || 'Failed to process After photo.', 'error');
+        }
+      }
+
+      async function saveDefectChanges() {
+        const defect = state.defects.find((d) => d.id === state.selectedDefectId);
+        if (!defect) return;
+
+        const selectedRadio = document.querySelector('input[name="detail-status"]:checked');
+        const newStatus = selectedRadio ? selectedRadio.value : defect.status;
+        const newCatatan = document.getElementById('detail-catatan-qc').value.trim();
+        const finalAfterBlob = state.detailNewAfterBlob || defect.fotoAfterBlob;
+
+        // Friendly guard if user tries to close without an After photo
+        if (newStatus === 'Closed' && !finalAfterBlob) {
+          const confirmed = await showConfirmDialog({
+            title: 'After Photo Not Uploaded',
+            message:
+              'You are about to mark this finding as CLOSED without attaching an After rectification photo. Do you still want to proceed with closing?',
+            confirmText: 'Yes, Close Anyway',
+            cancelText: 'Cancel, Upload Photo First',
+            confirmStyle: 'primary',
+          });
+          if (!confirmed) return;
+        }
+
+        const updatedDefect = {
+          ...defect,
+          status: newStatus,
+          catatanQc: newCatatan,
+          fotoAfterBlob: finalAfterBlob,
+          tanggalClose: newStatus === 'Closed' ? defect.tanggalClose || getTodayISO() : '',
+          updatedAt: new Date().toISOString(),
+        };
+
+        await dbPut('defects', updatedDefect);
+        const idx = state.defects.findIndex((d) => d.id === defect.id);
+        if (idx !== -1) state.defects[idx] = updatedDefect;
+
+        document.getElementById('modal-defect-detail').classList.add('hidden');
+        renderDashboardAndList();
+        showToast(`Status for ${updatedDefect.defectCode} updated to ${newStatus}.`);
+      }
+
+      function openLightbox(imgUrl, label, caption) {
+        if (!imgUrl) return;
+        state.lightboxZoomed = false;
+        const img = document.getElementById('lightbox-img');
+        img.src = imgUrl;
+        img.classList.remove('scale-150', 'cursor-zoom-out');
+        document.getElementById('btn-toggle-zoom').textContent = 'Zoom 2x';
+        document.getElementById('lightbox-label').textContent = label;
+        document.getElementById('lightbox-caption').textContent = caption;
+        document.getElementById('modal-lightbox').classList.remove('hidden');
+      }
+
+      /* -------------------------------------------------------------------
+       * 9. A4 PDF REPORT, CSV EXPORT & JSON BACKUP/RESTORE
+       * ------------------------------------------------------------------- */
+      function buildA4ReportHTML() {
+        const activeProj = getActiveProject();
+        const projectDefects = state.defects
+          .filter((d) => d.projectId === state.activeProjectId)
+          .sort((a, b) => a.defectCode.localeCompare(b.defectCode));
+
+        const total = projectDefects.length;
+        const countOpen = projectDefects.filter((d) => d.status === 'Open').length;
+        const countProgress = projectDefects.filter((d) => d.status === 'In Progress').length;
+        const countRecheck = projectDefects.filter((d) => d.status === 'Re-check').length;
+        const countClosed = projectDefects.filter((d) => d.status === 'Closed').length;
+        const countSap = projectDefects.filter((d) => d.kategori === 'SAP').length;
+        const countMe = projectDefects.filter((d) => d.kategori === 'ME').length;
+        const percentClosed = total > 0 ? Math.round((countClosed / total) * 100) : 0;
+
+        const rowsHtml =
+          projectDefects.length === 0
+            ? `<tr><td colspan="7" class="border border-slate-400 p-4 text-center text-slate-500">No defect findings recorded for this project yet.</td></tr>`
+            : projectDefects
+                .map((item, idx) => {
+                  const beforeUrl = getBlobUrl(`${item.id}-before`, item.fotoBeforeBlob);
+                  const afterUrl = getBlobUrl(`${item.id}-after`, item.fotoAfterBlob);
+
+                  return `
+                    <tr class="break-inside-avoid">
+                      <td class="border border-slate-400 p-2 text-center align-top font-semibold">${idx + 1}</td>
+                      <td class="border border-slate-400 p-2 align-top">
+                        <div class="font-mono font-bold text-slate-900">${escapeHtml(item.defectCode)}</div>
+                        <div class="text-[10px] text-slate-600 mt-0.5">Found: ${formatDateID(item.tanggalTemuan)}</div>
+                        ${item.targetSelesai ? `<div class="text-[10px] text-slate-600">Target: ${formatDateID(item.targetSelesai)}</div>` : ''}
+                        ${item.tanggalClose ? `<div class="text-[10px] text-emerald-700 font-bold">Closed: ${formatDateID(item.tanggalClose)}</div>` : ''}
+                      </td>
+                      <td class="border border-slate-400 p-2 align-top">
+                        <div class="font-bold text-slate-900">${escapeHtml(item.lokasiGrid)}</div>
+                        <div class="text-[10px] text-slate-600 mt-0.5">Category: ${escapeHtml(item.kategori)}</div>
+                      </td>
+                      <td class="border border-slate-400 p-2 align-top">
+                        <div class="text-slate-900 leading-snug">${escapeHtml(item.deskripsi)}</div>
+                        ${item.catatanQc ? `<div class="mt-1 pt-1 border-t border-slate-200 text-[10px] text-slate-700"><strong>QC Remarks:</strong> ${escapeHtml(item.catatanQc)}</div>` : ''}
+                      </td>
+                      <td class="border border-slate-400 p-2 text-center align-top">
+                        <div class="font-bold">${escapeHtml(item.status)}</div>
+                        <div class="text-[10px] text-slate-600 mt-0.5">(${escapeHtml(item.urgensi)})</div>
+                      </td>
+                      <td class="border border-slate-400 p-1.5 text-center align-middle w-32">
+                        ${
+                          beforeUrl
+                            ? `<img src="${beforeUrl}" alt="Before" class="w-28 h-20 object-cover mx-auto border border-slate-300" />`
+                            : `<span class="text-[10px] text-slate-400">-</span>`
+                        }
+                      </td>
+                      <td class="border border-slate-400 p-1.5 text-center align-middle w-32">
+                        ${
+                          afterUrl
+                            ? `<img src="${afterUrl}" alt="After" class="w-28 h-20 object-cover mx-auto border border-slate-300" />`
+                            : `<span class="text-[10px] text-slate-400">Pending</span>`
+                        }
+                      </td>
+                    </tr>
+                  `;
+                })
+                .join('');
+
+        const inspectorClean = (state.inspectorName || '').trim();
+        const approverClean = (state.approverName || '').trim();
+
+        const inspectorSignatureHtml = inspectorClean
+          ? `<p class="font-extrabold underline text-slate-900">${escapeHtml(inspectorClean)}</p>`
+          : `<div class="w-48 mx-auto border-b border-slate-900 h-5"></div>`;
+
+        const approverSignatureHtml = approverClean
+          ? `<p class="font-extrabold underline text-slate-900">${escapeHtml(approverClean)}</p>`
+          : `<div class="w-48 mx-auto border-b border-slate-900 h-5"></div>`;
+
+        return `
+          <div class="space-y-4 text-slate-900">
+            <!-- Official Report Header -->
+            <div class="border-b-2 border-slate-900 pb-3 flex items-start justify-between gap-4">
+              <div>
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Quality Control Field Inspection Report</div>
+                <h1 class="text-lg font-extrabold uppercase tracking-tight text-slate-900">QUALITY CONTROL INSPECTION REPORT (DEFECT LIST)</h1>
+                <p class="text-xs font-bold text-slate-800 mt-1">Project: ${escapeHtml(activeProj ? activeProj.name : '-')}</p>
+                <p class="text-[11px] font-semibold text-slate-600 mt-0.5">Category Summary: SAP (${countSap}) • ME (${countMe})</p>
+              </div>
+              <div class="text-right text-[11px] shrink-0">
+                <div><strong>Print Date:</strong> ${formatDateID(getTodayISO())}</div>
+                <div><strong>QC Inspector:</strong> ${inspectorClean ? escapeHtml(inspectorClean) : '-'}</div>
+                <div><strong>Completion Rate:</strong> ${percentClosed}% (${countClosed}/${total})</div>
+              </div>
+            </div>
+
+            <!-- Status Summary Strip -->
+            <div class="grid grid-cols-5 gap-2 text-center text-[11px]">
+              <div class="border border-slate-400 p-1.5"><span class="block font-extrabold text-sm">${total}</span>Total Findings</div>
+              <div class="border border-slate-400 p-1.5"><span class="block font-extrabold text-sm text-red-700">${countOpen}</span>Open</div>
+              <div class="border border-slate-400 p-1.5"><span class="block font-extrabold text-sm text-amber-700">${countProgress}</span>In Progress</div>
+              <div class="border border-slate-400 p-1.5"><span class="block font-extrabold text-sm text-blue-700">${countRecheck}</span>Re-check</div>
+              <div class="border border-slate-400 p-1.5"><span class="block font-extrabold text-sm text-emerald-700">${countClosed}</span>Closed</div>
+            </div>
+
+            <!-- Defect Register Table -->
+            <table class="w-full border-collapse border border-slate-400 text-[11px]">
+              <thead>
+                <tr class="bg-slate-200 text-slate-900 font-bold">
+                  <th class="border border-slate-400 p-2 w-8">No</th>
+                  <th class="border border-slate-400 p-2 w-28">ID & Dates</th>
+                  <th class="border border-slate-400 p-2 w-32">Location & Category</th>
+                  <th class="border border-slate-400 p-2">Finding Description & QC Remarks</th>
+                  <th class="border border-slate-400 p-2 w-20">Status</th>
+                  <th class="border border-slate-400 p-2 w-32">Before Photo</th>
+                  <th class="border border-slate-400 p-2 w-32">After Photo</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <!-- Signature Block -->
+            <div class="grid grid-cols-2 gap-8 pt-6 break-inside-avoid text-center text-xs">
+              <div>
+                <p class="font-semibold text-slate-700">Prepared By (QC Inspector),</p>
+                <div class="h-16"></div>
+                ${inspectorSignatureHtml}
+                <p class="text-[10px] text-slate-500 mt-1">Quality Control Inspector</p>
+              </div>
+              <div>
+                <p class="font-semibold text-slate-700">Reviewed / Approved By,</p>
+                <div class="h-16"></div>
+                ${approverSignatureHtml}
+                <p class="text-[10px] text-slate-500 mt-1">Project Approver / Management</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function prepareAndPrintA4() {
+        const html = buildA4ReportHTML();
+        document.getElementById('print-report-container').innerHTML = html;
+        setTimeout(() => {
+          window.print();
+        }, 150);
+      }
+
+      function openPreviewA4Modal() {
+        const html = buildA4ReportHTML();
+        document.getElementById('print-report-container').innerHTML = html;
+        document.getElementById('preview-report-mount').innerHTML = html;
+        document.getElementById('modal-print-preview').classList.remove('hidden');
+      }
+
+      function exportProjectToCSV() {
+        const activeProj = getActiveProject();
+        const projectDefects = state.defects.filter((d) => d.projectId === state.activeProjectId);
+
+        if (projectDefects.length === 0) {
+          showToast('No defect findings available to export to CSV.', 'warning');
+          return;
+        }
+
+        const headers = [
+          'Defect ID',
+          'Project',
+          'Inspection Date',
+          'Target Completion Date',
+          'Location / Grid / Axis',
+          'Category',
+          'Urgency',
+          'Finding Description',
+          'Status',
+          'Closed Date',
+          'QC Remarks',
+          'Before Photo',
+          'After Photo',
+        ];
+
+        const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+
+        const rows = projectDefects.map((d) => [
+          d.defectCode,
+          activeProj ? activeProj.name : '',
+          d.tanggalTemuan,
+          d.targetSelesai || '',
+          d.lokasiGrid,
+          d.kategori,
+          d.urgensi,
+          d.deskripsi,
+          d.status,
+          d.tanggalClose || '',
+          d.catatanQc || '',
+          d.fotoBeforeBlob ? 'Attached' : 'None',
+          d.fotoAfterBlob ? 'Attached' : 'Pending',
+        ]);
+
+        const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safeProjName = (activeProj ? activeProj.name : 'QC_Report').replace(/[^a-zA-Z0-9_-]/g, '_');
+        a.href = url;
+        a.download = `QC_Defect_List_${safeProjName}_${getTodayISO()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('CSV summary downloaded successfully.');
+      }
+
+      function blobToDataURL(blob) {
+        return new Promise((resolve) => {
+          if (!blob) {
+            resolve(null);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function dataURLToBlob(dataUrl) {
+        if (!dataUrl || typeof dataUrl !== 'string') return null;
+        const res = await fetch(dataUrl);
+        return await res.blob();
+      }
+
+      async function exportBackupJSON() {
+        try {
+          showToast('Preparing JSON backup file...', 'warning');
+          const serializedDefects = [];
+          for (const item of state.defects) {
+            const beforeDataUrl = await blobToDataURL(item.fotoBeforeBlob);
+            const afterDataUrl = await blobToDataURL(item.fotoAfterBlob);
+            const { fotoBeforeBlob, fotoAfterBlob, ...rest } = item;
+            serializedDefects.push({
+              ...rest,
+              beforeDataUrl,
+              afterDataUrl,
+            });
+          }
+
+          const payload = {
+            app: 'QC Inspector',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            settings: {
+              inspectorName: state.inspectorName,
+              approverName: state.approverName,
+              activeProjectId: state.activeProjectId,
+            },
+            projects: state.projects,
+            defects: serializedDefects,
+          };
+
+          const jsonBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(jsonBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `QC_Inspector_Backup_${getTodayISO()}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast('JSON backup (including photos) downloaded successfully.');
+        } catch (err) {
+          showToast('Failed to generate JSON backup file.', 'error');
+        }
+      }
+
+      async function importRestoreJSON(file) {
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+
+          if (!parsed || !Array.isArray(parsed.projects) || !Array.isArray(parsed.defects)) {
+            showToast('Invalid JSON backup file format.', 'error');
+            return;
+          }
+
+          const modeChoice = await showConfirmDialog({
+            title: 'Restore Backup Data (.JSON)',
+            message: `Found ${parsed.projects.length} project(s) and ${parsed.defects.length} defect record(s). Choose how to restore data on this device:`,
+            confirmText: 'Overwrite All Data',
+            extraButtonText: 'Merge Data',
+            cancelText: 'Cancel',
+            confirmStyle: 'danger',
+          });
+
+          if (!modeChoice) return;
+
+          if (modeChoice === true) {
+            await dbClearStore('projects');
+            await dbClearStore('defects');
+          }
+
+          for (const proj of parsed.projects) {
+            await dbPut('projects', proj);
+          }
+
+          for (const d of parsed.defects) {
+            const fotoBeforeBlob = await dataURLToBlob(d.beforeDataUrl);
+            const fotoAfterBlob = await dataURLToBlob(d.afterDataUrl);
+            const { beforeDataUrl, afterDataUrl, ...cleanDefect } = d;
+            await dbPut('defects', {
+              ...cleanDefect,
+              fotoBeforeBlob,
+              fotoAfterBlob,
+            });
+          }
+
+          await setSetting('projectsSeeded', true);
+          localStorage.setItem('qc_projects_seeded', 'true');
+
+          if (parsed.settings) {
+            if (typeof parsed.settings.inspectorName === 'string') {
+              state.inspectorName = parsed.settings.inspectorName;
+              await setSetting('inspectorName', state.inspectorName);
+            }
+            if (typeof parsed.settings.approverName === 'string') {
+              state.approverName = parsed.settings.approverName;
+              await setSetting('approverName', state.approverName);
+            }
+            if (parsed.settings.activeProjectId) {
+              state.activeProjectId = parsed.settings.activeProjectId;
+              await setSetting('activeProjectId', state.activeProjectId);
+            }
+          }
+
+          await reloadAllFromDB();
+          showToast('Backup data restored successfully.');
+        } catch (err) {
+          showToast('Failed to read JSON backup file.', 'error');
+        } finally {
+          document.getElementById('file-restore-json').value = '';
+        }
+      }
+
+      /* -------------------------------------------------------------------
+       * 10. PROFILE SETTINGS & PROJECT MANAGEMENT (ADD, RENAME & DELETE)
+       * ------------------------------------------------------------------- */
+      function openSettingsModal() {
+        document.getElementById('setting-inspector-name').value = state.inspectorName || '';
+        document.getElementById('setting-approver-name').value = state.approverName || '';
+        document.getElementById('modal-settings').classList.remove('hidden');
+      }
+
+      function openProjectsModal() {
+        state.editingProjectId = null;
+        renderProjectsManageList();
+        document.getElementById('modal-projects').classList.remove('hidden');
+      }
+
+      function renderProjectsManageList() {
+        const listEl = document.getElementById('projects-manage-list');
+        const emptyNotice = document.getElementById('projects-empty-notice');
+        document.getElementById('projects-total-count').textContent = state.projects.length;
+        listEl.innerHTML = '';
+
+        if (state.projects.length === 0) {
+          listEl.classList.add('hidden');
+          emptyNotice.classList.remove('hidden');
+          return;
+        }
+
+        listEl.classList.remove('hidden');
+        emptyNotice.classList.add('hidden');
+
+        state.projects.forEach((proj) => {
+          const count = state.defects.filter((d) => d.projectId === proj.id).length;
+          const isActive = proj.id === state.activeProjectId;
+          const isEditing = proj.id === state.editingProjectId;
+
+          const li = document.createElement('li');
+          li.className = `p-3.5 ${isActive ? 'bg-amber-50/60' : 'bg-white'} space-y-2`;
+
+          if (isEditing) {
+            li.innerHTML = `
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" data-edit-input="${proj.id}" value="${escapeHtml(proj.name)}" class="flex-1 px-3 py-2 text-xs sm:text-sm font-semibold border border-slate-400 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-slate-900" />
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button type="button" data-save-edit="${proj.id}" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition">
+                    Save
+                  </button>
+                  <button type="button" data-cancel-edit="${proj.id}" class="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            `;
+          } else {
+            li.innerHTML = `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <p class="font-bold text-slate-900 break-words">${escapeHtml(proj.name)}</p>
+                    ${isActive ? `<span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">Active</span>` : ''}
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">${count} defect finding(s) stored</p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  ${
+                    !isActive
+                      ? `<button type="button" data-select-proj="${proj.id}" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition">Select</button>`
+                      : ''
+                  }
+                  <button type="button" data-edit-proj="${proj.id}" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs transition">
+                    Rename
+                  </button>
+                  <button type="button" data-delete-proj="${proj.id}" class="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs transition">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          listEl.appendChild(li);
+        });
+
+        // Select active project
+        listEl.querySelectorAll('[data-select-proj]').forEach((btn) => {
+          btn.onclick = async () => {
+            state.activeProjectId = btn.dataset.selectProj;
+            await setSetting('activeProjectId', state.activeProjectId);
+            renderProjectSelector();
+            renderDashboardAndList();
+            renderProjectsManageList();
+            showToast('Active project switched.');
+          };
+        });
+
+        // Enter rename mode
+        listEl.querySelectorAll('[data-edit-proj]').forEach((btn) => {
+          btn.onclick = () => {
+            state.editingProjectId = btn.dataset.editProj;
+            renderProjectsManageList();
+            const inputEl = listEl.querySelector(`[data-edit-input="${state.editingProjectId}"]`);
+            if (inputEl) {
+              inputEl.focus();
+              inputEl.select();
+            }
+          };
+        });
+
+        // Cancel rename
+        listEl.querySelectorAll('[data-cancel-edit]').forEach((btn) => {
+          btn.onclick = () => {
+            state.editingProjectId = null;
+            renderProjectsManageList();
+          };
+        });
+
+        // Save renamed project
+        listEl.querySelectorAll('[data-save-edit]').forEach((btn) => {
+          btn.onclick = async () => {
+            const projId = btn.dataset.saveEdit;
+            const inputEl = listEl.querySelector(`[data-edit-input="${projId}"]`);
+            const newName = inputEl ? inputEl.value.trim() : '';
+            if (!newName) {
+              showToast('Project name cannot be empty.', 'warning');
+              return;
+            }
+            const proj = state.projects.find((p) => p.id === projId);
+            if (proj) {
+              proj.name = newName;
+              await dbPut('projects', proj);
+            }
+            state.editingProjectId = null;
+            renderProjectSelector();
+            renderDashboardAndList();
+            renderProjectsManageList();
+            showToast('Project name updated.');
+          };
+        });
+
+        // Delete project permanently with cascading confirmation
+        listEl.querySelectorAll('[data-delete-proj]').forEach((btn) => {
+          btn.onclick = async () => {
+            const projId = btn.dataset.deleteProj;
+            const proj = state.projects.find((p) => p.id === projId);
+            if (!proj) return;
+
+            const relatedDefects = state.defects.filter((d) => d.projectId === proj.id);
+            const confirmed = await showConfirmDialog({
+              title: `Delete Project "${proj.name}"?`,
+              message: `This project contains ${relatedDefects.length} associated defect record(s). Deleting the project will permanently remove all defect records and photos inside it. Continue?`,
+              confirmText: 'Yes, Delete Project',
+              cancelText: 'Cancel',
+              confirmStyle: 'danger',
+            });
+
+            if (!confirmed) return;
+
+            for (const def of relatedDefects) {
+              await dbDelete('defects', def.id);
+            }
+            state.defects = state.defects.filter((d) => d.projectId !== proj.id);
+
+            await dbDelete('projects', proj.id);
+            state.projects = state.projects.filter((p) => p.id !== proj.id);
+
+            if (state.activeProjectId === proj.id) {
+              state.activeProjectId = state.projects.length > 0 ? state.projects[0].id : '';
+              await setSetting('activeProjectId', state.activeProjectId);
+            }
+
+            renderProjectSelector();
+            renderDashboardAndList();
+            renderProjectsManageList();
+            showToast(`Project "${proj.name}" deleted permanently.`);
+          };
+        });
+      }
+
+      /* -------------------------------------------------------------------
+       * 11. DATA RELOAD & EVENT LISTENERS
+       * ------------------------------------------------------------------- */
+      async function reloadAllFromDB() {
+        state.projects = await dbGetAll('projects');
+        state.defects = await dbGetAll('defects');
+        state.inspectorName = await getSetting('inspectorName', '');
+        state.approverName = await getSetting('approverName', '');
+
+        const savedActiveProj = await getSetting('activeProjectId', state.projects[0]?.id || '');
+        if (state.projects.some((p) => p.id === savedActiveProj)) {
+          state.activeProjectId = savedActiveProj;
+        } else {
+          state.activeProjectId = state.projects.length > 0 ? state.projects[0].id : '';
+        }
+
+        updateHeaderInspectorDisplay();
+        renderProjectSelector();
+        renderDashboardAndList();
+      }
+
+      function bindEvents() {
+        // Tab & Bottom Navigation
+        document.querySelectorAll('[data-nav]').forEach((btn) => {
+          btn.addEventListener('click', () => switchView(btn.dataset.nav));
+        });
+
+        // Active Project Selector
+        document.getElementById('project-selector').addEventListener('change', async (e) => {
+          state.activeProjectId = e.target.value;
+          await setSetting('activeProjectId', state.activeProjectId);
+          renderProjectSelector();
+          renderDashboardAndList();
+          if (!document.getElementById('view-create').classList.contains('hidden')) {
+            document.getElementById('input-defect-code').value = generateNextDefectCode();
+          }
+        });
+
+        document.getElementById('btn-manage-projects').addEventListener('click', openProjectsModal);
+        document.getElementById('btn-close-projects').addEventListener('click', () => {
+          document.getElementById('modal-projects').classList.add('hidden');
+        });
+
+        // Clear Sample Data
+        document.getElementById('btn-clear-samples').addEventListener('click', async () => {
+          const ok = await showConfirmDialog({
+            title: 'Clear All Sample Data?',
+            message: 'Both initial demo defect records will be permanently removed so your defect register is clean for live field inspection data.',
+            confirmText: 'Yes, Clear Samples',
+            cancelText: 'Cancel',
+            confirmStyle: 'danger',
+          });
+          if (!ok) return;
+
+          const samples = state.defects.filter((d) => d.isSample);
+          for (const s of samples) {
+            await dbDelete('defects', s.id);
+          }
+          state.defects = state.defects.filter((d) => !d.isSample);
+          renderDashboardAndList();
+          showToast('Sample data cleared.');
+        });
+
+        // Search, Category, Urgency & Status Pill Filters
+        document.getElementById('filter-search').addEventListener('input', (e) => {
+          state.filters.search = e.target.value;
+          renderDashboardAndList();
+        });
+
+        document.getElementById('filter-category').addEventListener('change', (e) => {
+          state.filters.category = e.target.value;
+          renderDashboardAndList();
+        });
+
+        document.getElementById('filter-urgency').addEventListener('change', (e) => {
+          state.filters.urgency = e.target.value;
+          renderDashboardAndList();
+        });
+
+        document.querySelectorAll('.status-pill-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.filters.status = btn.dataset.statusFilter;
+            document.querySelectorAll('.status-pill-btn').forEach((p) => {
+              const active = p.dataset.statusFilter === state.filters.status;
+              p.classList.toggle('bg-slate-900', active);
+              p.classList.toggle('text-white', active);
+              p.classList.toggle('border-slate-900', active);
+              p.classList.toggle('bg-white', !active);
+              p.classList.toggle('text-slate-700', !active);
+              p.classList.toggle('border-slate-200', !active);
+            });
+            renderDashboardAndList();
+          });
+        });
+
+        // Create Defect Form: Before Photo Input
+        document.getElementById('file-before-camera').addEventListener('change', (e) => {
+          handleCreateBeforePhotoSelected(e.target.files[0]);
+        });
+        document.getElementById('file-before-gallery').addEventListener('change', (e) => {
+          handleCreateBeforePhotoSelected(e.target.files[0]);
+        });
+        document.getElementById('btn-remove-create-photo').addEventListener('click', () => {
+          state.createBeforeBlob = null;
+          document.getElementById('create-before-preview-box').classList.add('hidden');
+          document.getElementById('file-before-camera').value = '';
+          document.getElementById('file-before-gallery').value = '';
+        });
+
+        // Submit Create Defect Form
+        document.getElementById('form-create-defect').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!state.activeProjectId) {
+            showToast('Please add or select a project first in Manage Projects.', 'warning');
+            openProjectsModal();
+            return;
+          }
+          const categoryRadio = document.querySelector('input[name="kategori"]:checked');
+          const urgencyRadio = document.querySelector('input[name="urgensi"]:checked');
+          const newDefect = {
+            id: `def-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            projectId: state.activeProjectId,
+            defectCode: document.getElementById('input-defect-code').value.trim() || generateNextDefectCode(),
+            tanggalTemuan: document.getElementById('input-tanggal-temuan').value || getTodayISO(),
+            targetSelesai: document.getElementById('input-target-selesai').value || '',
+            lokasiGrid: document.getElementById('input-lokasi-grid').value.trim(),
+            kategori: categoryRadio ? categoryRadio.value : 'SAP',
+            urgensi: urgencyRadio ? urgencyRadio.value : 'Major',
+            deskripsi: document.getElementById('input-deskripsi').value.trim(),
+            status: 'Open',
+            catatanQc: '',
+            tanggalClose: '',
+            fotoBeforeBlob: state.createBeforeBlob,
+            fotoAfterBlob: null,
+            isSample: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          await dbPut('defects', newDefect);
+          state.defects.unshift(newDefect);
+          renderDashboardAndList();
+          switchView('list');
+          showToast(`Finding ${newDefect.defectCode} saved successfully!`);
+        });
+
+        // Defect Detail Modal Actions
+        document.getElementById('btn-close-detail').addEventListener('click', () => {
+          document.getElementById('modal-defect-detail').classList.add('hidden');
+        });
+        document.getElementById('btn-cancel-detail').addEventListener('click', () => {
+          document.getElementById('modal-defect-detail').classList.add('hidden');
+        });
+        document.getElementById('file-after-camera').addEventListener('change', (e) => {
+          handleDetailAfterPhotoSelected(e.target.files[0]);
+        });
+        document.getElementById('file-after-gallery').addEventListener('change', (e) => {
+          handleDetailAfterPhotoSelected(e.target.files[0]);
+        });
+        document.getElementById('btn-save-detail').addEventListener('click', saveDefectChanges);
+
+        document.getElementById('btn-delete-defect').addEventListener('click', async () => {
+          const defect = state.defects.find((d) => d.id === state.selectedDefectId);
+          if (!defect) return;
+          const ok = await showConfirmDialog({
+            title: `Delete Finding ${defect.defectCode}?`,
+            message: 'This defect record along with its Before & After photos will be permanently deleted from device storage.',
+            confirmText: 'Yes, Delete Permanently',
+            cancelText: 'Cancel',
+            confirmStyle: 'danger',
+          });
+          if (!ok) return;
+
+          await dbDelete('defects', defect.id);
+          state.defects = state.defects.filter((d) => d.id !== defect.id);
+          document.getElementById('modal-defect-detail').classList.add('hidden');
+          renderDashboardAndList();
+          showToast(`Finding ${defect.defectCode} deleted.`);
+        });
+
+        // Lightbox Zoom Controls
+        document.getElementById('btn-close-lightbox').addEventListener('click', () => {
+          document.getElementById('modal-lightbox').classList.add('hidden');
+        });
+        document.getElementById('btn-toggle-zoom').addEventListener('click', () => {
+          state.lightboxZoomed = !state.lightboxZoomed;
+          const img = document.getElementById('lightbox-img');
+          img.classList.toggle('scale-150', state.lightboxZoomed);
+          img.classList.toggle('cursor-zoom-out', state.lightboxZoomed);
+          document.getElementById('btn-toggle-zoom').textContent = state.lightboxZoomed ? 'Reset Zoom' : 'Zoom 2x';
+        });
+
+        // Profile & Settings Modal
+        document.getElementById('btn-open-settings').addEventListener('click', openSettingsModal);
+        document.getElementById('btn-header-inspector-trigger').addEventListener('click', openSettingsModal);
+        document.getElementById('btn-close-settings').addEventListener('click', () => {
+          document.getElementById('modal-settings').classList.add('hidden');
+        });
+        document.getElementById('btn-open-projects-from-settings').addEventListener('click', () => {
+          document.getElementById('modal-settings').classList.add('hidden');
+          openProjectsModal();
+        });
+
+        document.getElementById('form-settings-profile').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          state.inspectorName = document.getElementById('setting-inspector-name').value.trim();
+          state.approverName = document.getElementById('setting-approver-name').value.trim();
+          await setSetting('inspectorName', state.inspectorName);
+          await setSetting('approverName', state.approverName);
+          updateHeaderInspectorDisplay();
+          document.getElementById('modal-settings').classList.add('hidden');
+          showToast('Inspector & Approver profile saved.');
+        });
+
+        document.getElementById('form-add-project').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const nameInput = document.getElementById('new-project-name');
+          const name = nameInput.value.trim();
+          if (!name) return;
+
+          const newProj = {
+            id: `proj-${Date.now()}`,
+            name,
+            createdAt: new Date().toISOString(),
+          };
+          await dbPut('projects', newProj);
+          state.projects.push(newProj);
+          state.activeProjectId = newProj.id;
+          await setSetting('activeProjectId', state.activeProjectId);
+
+          nameInput.value = '';
+          renderProjectSelector();
+          renderDashboardAndList();
+          renderProjectsManageList();
+          showToast(`Project "${name}" added & activated.`);
+        });
+
+        // Reports & Backup/Restore
+        document.getElementById('btn-export-pdf').addEventListener('click', prepareAndPrintA4);
+        document.getElementById('btn-preview-pdf').addEventListener('click', openPreviewA4Modal);
+        document.getElementById('btn-close-preview-modal').addEventListener('click', () => {
+          document.getElementById('modal-print-preview').classList.add('hidden');
+        });
+        document.getElementById('btn-export-csv').addEventListener('click', exportProjectToCSV);
+        document.getElementById('btn-backup-json').addEventListener('click', exportBackupJSON);
+        document.getElementById('file-restore-json').addEventListener('change', (e) => {
+          importRestoreJSON(e.target.files[0]);
+        });
+      }
+
+      /* -------------------------------------------------------------------
+       * 12. APPLICATION INITIALIZATION
+       * ------------------------------------------------------------------- */
+      window.addEventListener('DOMContentLoaded', async () => {
+        try {
+          await openDatabase();
+          await seedInitialDataIfNeeded();
+          await reloadAllFromDB();
+          enhanceUI();
+          bindEvents();
+        } catch (err) {
+          showToast('Failed to initialize browser local storage.', 'error');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
